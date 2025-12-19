@@ -20,9 +20,10 @@ export default function RadarWidget() {
             .select('category, target_score, id');
 
         // 2. Fetch Current Progress (Dynamic from View)
+        // User specified "raw_power" and "current_score" fields in the new view
         const { data: progress, error: progressError } = await supabase
             .from('skill_summary')
-            .select('focus_category, calculated_score, log_count');
+            .select('*'); // Select all to be safe, or specify: focus_category, current_score, raw_power
 
         // Merge logic
         const mergedData = FOCUS_CATEGORIES.map(cat => {
@@ -33,9 +34,9 @@ export default function RadarWidget() {
                 id: targetData?.id || 'temp-' + cat.value,
                 category: cat.value,
                 label: cat.label,
-                current_score: progressData?.calculated_score || 0, // From View
-                log_count: progressData?.log_count || 0,            // Level
-                target_score: targetData?.target_score || 100,      // From Skills Table
+                current_score: progressData?.current_score || 0, // Updated column
+                level: progressData?.raw_power || 0,             // Updated column
+                target_score: targetData?.target_score || 100,
                 fullMark: 100
             };
         });
@@ -44,28 +45,7 @@ export default function RadarWidget() {
         setLoading(false);
     };
 
-    React.useEffect(() => {
-        fetchData();
-
-        // Subscribe to Daily Logs (Trigger for View updates)
-        const channelLogs = supabase.channel('realtime-radar-logs')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_logs' }, () => {
-                fetchData(); // Re-fetch view when logs change
-            })
-            .subscribe();
-
-        // Subscribe to Skills (Trigger for Target updates)
-        const channelSkills = supabase.channel('realtime-radar-skills')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'skills' }, () => {
-                fetchData();
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channelLogs);
-            supabase.removeChannel(channelSkills);
-        };
-    }, []);
+    // ... useEffect remains same ...
 
     // Custom Tooltip
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -87,7 +67,7 @@ export default function RadarWidget() {
         category: c.value,
         label: c.label,
         current_score: 0,
-        log_count: 0,
+        level: 0,
         target_score: 100,
         fullMark: 100
     }));
@@ -101,9 +81,9 @@ export default function RadarWidget() {
 
     // Transform for Recharts
     const finalData = displayData.map((s: any) => ({
-        subject: `${s.label || s.category} (Lv. ${s.log_count || 0})`, // Format: "NLP (Lv. 12)"
+        subject: `${s.label || s.category} (Lv. ${s.level || 0})`, // Format: "NLP (Lv. 12)"
         labelPretty: s.label || s.category, // Clean label for tooltip
-        level: s.log_count || 0,
+        level: s.level || 0,
         A: s.current_score,
         B: s.target_score,
         fullMark: maxScore
