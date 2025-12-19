@@ -12,6 +12,7 @@ import { FOCUS_CATEGORIES } from "@/lib/constants";
 export default function RadarWidget() {
     const { skills, setSkills } = useStore();
     const [loading, setLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
 
     const fetchData = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -102,6 +103,11 @@ export default function RadarWidget() {
         fullMark: maxScore
     }));
 
+
+    // Debugging: Validate Data Delivery
+    console.table(finalData);
+
+    if (!isMounted) return null;
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">
