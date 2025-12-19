@@ -47,6 +47,7 @@ export default function RadarWidget() {
             if (progressError) console.error("Error fetching progress:", progressError);
 
             console.log("Bytelogic Data (Progress):", progress);
+            console.log("Raw View Data from Supabase:", progress); // DEBUG RAW
             console.log("View categories:", progress?.map((p: any) => p.focus_category)); // DEBUG SYNC
 
             // C. Merge & Map Data
@@ -66,6 +67,13 @@ export default function RadarWidget() {
             });
 
             // ... (rest of logic)
+
+            // Calculate Max Score for Domain (Infinite Growth)
+            const maxVal = Math.max(
+                100,
+                ...merged.map(m => m.A),
+                ...merged.map(m => m.B)
+            );
 
             // Add 'fullMark'
             const finalData = merged.map(m => ({
