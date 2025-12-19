@@ -14,38 +14,56 @@ export default function RadarWidget() {
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
-        const { data: skillsData, error } = await supabase
+        // 1. Fetch Targets (Manual Goals)
+        const { data: targets, error: targetError } = await supabase
             .from('skills')
-            .select('*');
+            .select('category, target_score, id');
 
-        if (skillsData) {
-            // Merge with constants to ensure all categories exist (handling new user case)
-            const mergedData = FOCUS_CATEGORIES.map(cat => {
-                const found = skillsData.find((s: any) => s.category === cat.value);
-                return {
-                    id: found?.id || 'temp-' + cat.value,
-                    category: cat.value,
-                    label: cat.label,
-                    current_score: found?.current_score || 0,
-                    target_score: found?.target_score || 100,
-                    fullMark: 100
-                };
-            });
-            setSkills(mergedData);
-        }
+        // 2. Fetch Current Progress (Dynamic from View)
+        const { data: progress, error: progressError } = await supabase
+            .from('skill_summary')
+            .select('focus_category, calculated_score');
+
+        // Merge logic
+        const mergedData = FOCUS_CATEGORIES.map(cat => {
+            const targetData = targets?.find((t: any) => t.category === cat.value);
+            const progressData = progress?.find((p: any) => p.focus_category === cat.value);
+
+            return {
+                id: targetData?.id || 'temp-' + cat.value,
+                category: cat.value,
+                label: cat.label,
+                current_score: progressData?.calculated_score || 0, // From View
+                target_score: targetData?.target_score || 100,      // From Skills Table
+                fullMark: 100
+            };
+        });
+
+        setSkills(mergedData);
         setLoading(false);
     };
 
     React.useEffect(() => {
         fetchData();
 
-        const channel = supabase.channel('skills-changes')
+        // Subscribe to Daily Logs (Trigger for View updates)
+        const channelLogs = supabase.channel('realtime-radar-logs')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_logs' }, () => {
+                fetchData(); // Re-fetch view when logs change
+            })
+            .subscribe();
+
+        // Subscribe to Skills (Trigger for Target updates)
+        const channelSkills = supabase.channel('realtime-radar-skills')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'skills' }, () => {
                 fetchData();
             })
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        return () => {
+            supabase.removeChannel(channelLogs);
+            supabase.removeChannel(channelSkills);
+        };
     }, []);
 
     // Custom Tooltip
@@ -72,10 +90,9 @@ export default function RadarWidget() {
     }));
 
     // Transform for Recharts
-    // We Map 'category' to 'subject' for the axis
     const finalData = displayData.map((s: any) => ({
-        subject: s.category, // Use short value for axis if preferred, or s.label for long
-        label: s.label || s.category, // Pass label for tooltip
+        subject: s.category,
+        label: s.label || s.category,
         A: s.current_score,
         B: s.target_score,
         fullMark: 100
