@@ -55,8 +55,8 @@ export default function RadarWidget() {
                     subject: cat.label, // Just the name for the axis key
                     fullLabel: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Full text for reference if needed
                     levelLabel: `(Lv. ${p?.raw_power || 0})`,
-                    level: p?.raw_power || 0,
-                    A: p?.current_score || 0,
+                    level: Number(p?.raw_power || 0),
+                    A: Number(p?.current_score || 0),
                     B: 100, // Target strictly 100
                     fullMark: 100
                 };
@@ -159,7 +159,7 @@ export default function RadarWidget() {
                                             fill="#1E93AB"
                                             fontSize={9}
                                         >
-                                            {data?.levelLabel}
+                                            {data?.levelLabel || ""}
                                         </text>
                                     </g>
                                 );
