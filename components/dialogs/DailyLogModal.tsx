@@ -62,13 +62,20 @@ export default function DailyLogModal() {
             addLog(newLog);
 
             // 2. Supabase Insert
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error("User not authenticated");
+            }
+
+            console.log("Committing Log:", { ...newLog, user_id: user.id });
+
             const { error } = await supabase.from('daily_logs').insert({
                 focus_category: data.category,
                 description: data.description,
                 mood_score: data.mood,
                 duration_minutes: data.duration,
                 xp_value: xp,
-                user_id: (await supabase.auth.getUser()).data.user?.id // Explicitly attach user_id if RLS needs it, though default usually handles it
+                user_id: user.id
             });
 
             if (error) throw error; // Throw to catch block

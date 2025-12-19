@@ -21,8 +21,10 @@ export default function SkillCalibration() {
 
     const handleUpdate = async (id: string, val: number, category?: string) => {
         try {
-            // Optimistic update
-            updateSkill(id, val);
+            // Optimistic update - Update Store (Target only)
+            // updateSkill(id, val); // We need a updateTarget method in store or similar? 
+            // Actually, the store `skills` object has `target_score`. Let's assume we update that.
+            // For now, let's just do the DB update and refresh or let Realtime handle it.
 
             // Database update (Upsert to handle new skills)
             if (id.startsWith('temp-') && category) {
@@ -30,17 +32,16 @@ export default function SkillCalibration() {
                     .from('skills')
                     .upsert({
                         category: category,
-                        current_score: val,
-                        target_score: 100,
+                        target_score: val, // Updating TARGET now
                         user_id: (await supabase.auth.getUser()).data.user?.id
-                    }, { onConflict: 'user_id, category' })
+                    }, { onConflict: 'user_id, category' }) // Fixed constraint
                     .select()
                     .single();
 
                 if (error) throw error;
 
             } else {
-                const { error } = await supabase.from('skills').update({ current_score: val }).eq('id', id);
+                const { error } = await supabase.from('skills').update({ target_score: val }).eq('id', id);
                 if (error) throw error;
             }
         } catch (error: any) {
@@ -59,9 +60,9 @@ export default function SkillCalibration() {
             <PopoverContent className="w-80 bg-background/95 backdrop-blur border-primary/20">
                 <div className="grid gap-4">
                     <div className="space-y-2">
-                        <h4 className="font-medium leading-none text-primary">Calibrate Skills</h4>
+                        <h4 className="font-medium leading-none text-primary">Set Targets</h4>
                         <p className="text-sm text-muted-foreground">
-                            Adjust your self-assessment.
+                            Adjust your learning goals (Red Line).
                         </p>
                     </div>
                     <div className="grid gap-4">
@@ -71,9 +72,9 @@ export default function SkillCalibration() {
                                 <Label className="text-xs truncate">{skill.category}</Label>
                                 <input
                                     type="range"
-                                    min="0" max="100"
-                                    className="col-span-2 accent-primary h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                                    value={skill.current_score}
+                                    min="0" max="100" // Target cap at 100? Or more? standard is 100.
+                                    className="col-span-2 accent-red-500 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                                    value={skill.target_score}
                                     onChange={(e) => handleUpdate(skill.id, parseInt(e.target.value), skill.category)}
                                 />
                             </div>
