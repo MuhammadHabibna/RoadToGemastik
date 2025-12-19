@@ -6,6 +6,7 @@ import DailyGrind from "@/components/dashboard/DailyGrind";
 import InteractiveRoadmap from "@/components/dashboard/InteractiveRoadmap";
 import IntegratedCalendar from "@/components/dashboard/IntegratedCalendar";
 
+export const dynamic = 'force-dynamic'
 export default function Home() {
     return (
         <main className="min-h-screen bg-background text-foreground p-4 md:p-6 overflow-hidden flex flex-col gap-4">
