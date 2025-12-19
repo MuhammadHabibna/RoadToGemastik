@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
 import { useStore } from "@/lib/store";
 import SkillCalibration from "@/components/dialogs/SkillCalibration";
+import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { FOCUS_CATEGORIES } from "@/lib/constants";
@@ -108,6 +109,14 @@ export default function RadarWidget() {
     console.table(finalData);
 
     if (!isMounted) return null;
+
+    if (loading) {
+        return (
+            <Card className="h-full flex items-center justify-center bg-card/50 backdrop-blur-sm border-primary/20">
+                <Loader2 className="w-8 h-8 animate-spin text-[#1E93AB]" />
+            </Card>
+        );
+    }
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">

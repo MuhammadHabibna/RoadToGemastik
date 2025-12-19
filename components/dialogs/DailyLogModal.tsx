@@ -16,6 +16,7 @@ import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabaseClient";
 import { useToastStore } from "@/lib/toast-store";
 import { FOCUS_CATEGORIES } from "@/lib/constants";
+import { useRouter } from "next/navigation";
 
 // 1. Zod Schema
 const formSchema = z.object({
@@ -32,11 +33,12 @@ export default function DailyLogModal() {
     const { addToast } = useToastStore();
     const { addLog } = useStore();
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            category: "NLP",
+            category: "NLP & Text Mining",
             description: "",
             duration: 30,
             mood: 4
@@ -84,6 +86,7 @@ export default function DailyLogModal() {
             addToast(`Successfully logged ${data.category} activity! (+${xp} XP)`, 'success');
             setOpen(false);
             reset();
+            router.refresh();
 
         } catch (error: any) {
             console.error("Error inserting daily log:", error.message || error);
