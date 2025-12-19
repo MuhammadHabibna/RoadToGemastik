@@ -44,39 +44,46 @@ export default function DailyLogModal() {
 
     const onSubmit = async (data: FormData) => {
         setLoading(true);
-
         const xp = Math.round(data.duration * (data.mood / 3));
 
-        // 1. Optimistic Update (Zustand)
-        // We set ID to a temp one, it will be refetched or we accept it's temporary in UI
-        const newLog = {
-            id: crypto.randomUUID(),
-            created_at: new Date().toISOString(),
-            focus_category: data.category,
-            description: data.description,
-            mood_score: data.mood,
-            duration_minutes: data.duration,
-            xp_value: xp
-        };
+        try {
+            // 1. Optimistic Update (Zustand)
+            const newLog = {
+                id: crypto.randomUUID(),
+                created_at: new Date().toISOString(),
+                focus_category: data.category,
+                description: data.description,
+                mood_score: data.mood,
+                duration_minutes: data.duration,
+                xp_value: xp
+            };
 
-        // 2. Supabase Insert
-        const { error } = await supabase.from('daily_logs').insert({
-            focus_category: data.category,
-            description: data.description,
-            mood_score: data.mood,
-            duration_minutes: data.duration,
-            xp_value: xp
-        });
+            // Add to store immediately
+            addLog(newLog);
 
-        setLoading(false);
-        if (!error) {
+            // 2. Supabase Insert
+            const { error } = await supabase.from('daily_logs').insert({
+                focus_category: data.category,
+                description: data.description,
+                mood_score: data.mood,
+                duration_minutes: data.duration,
+                xp_value: xp,
+                user_id: (await supabase.auth.getUser()).data.user?.id // Explicitly attach user_id if RLS needs it, though default usually handles it
+            });
+
+            if (error) throw error; // Throw to catch block
+
             addToast(`Successfully logged ${data.category} activity! (+${xp} XP)`, 'success');
-            addLog(newLog); // Update local store
             setOpen(false);
             reset();
-        } else {
-            addToast(`Failed to save log: ${error.message}`, 'error');
-            console.error(error);
+
+        } catch (error: any) {
+            console.error("Error inserting daily log:", error.message || error);
+            addToast(`Failed to save log: ${error.message || "Unknown error"}`, 'error');
+            // Ideally rollback optimistic update here if needed, but for simple app keeping it might be okay or remove it:
+            // removeLog(newLog.id); // If we extracted id to scope
+        } finally {
+            setLoading(false);
         }
     };
 

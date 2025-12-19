@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useStore } from "@/lib/store";
 import { Settings2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useToastStore } from "@/lib/toast-store";
 // Native range input is easier than shadcn slider manual wiring without full component
 // but we'll try native input range for simplicity and "Writer Mode" speed.
 
@@ -16,25 +17,35 @@ export default function SkillCalibration() {
     const { skills, updateSkill } = useStore();
     const [loading, setLoading] = useState(false);
 
+    const { addToast } = useToastStore();
+
     const handleUpdate = async (id: string, val: number, category?: string) => {
-        // Optimistic update
-        updateSkill(id, val);
+        try {
+            // Optimistic update
+            updateSkill(id, val);
 
-        // Database update (Upsert to handle new skills)
-        if (id.startsWith('temp-') && category) {
-            const { data, error } = await supabase
-                .from('skills')
-                .upsert({ category: category, current_score: val, target_score: 100 }, { onConflict: 'user_id, category' })
-                .select()
-                .single();
+            // Database update (Upsert to handle new skills)
+            if (id.startsWith('temp-') && category) {
+                const { data, error } = await supabase
+                    .from('skills')
+                    .upsert({
+                        category: category,
+                        current_score: val,
+                        target_score: 100,
+                        user_id: (await supabase.auth.getUser()).data.user?.id
+                    }, { onConflict: 'user_id, category' })
+                    .select()
+                    .single();
 
-            if (data) {
-                // Replace temp ID with real one in store
-                // This requires a more complex store action or just re-fetch. 
-                // For now, simple re-fetch by invalidating (or relying on subscription) is safest.
+                if (error) throw error;
+
+            } else {
+                const { error } = await supabase.from('skills').update({ current_score: val }).eq('id', id);
+                if (error) throw error;
             }
-        } else {
-            await supabase.from('skills').update({ current_score: val }).eq('id', id);
+        } catch (error: any) {
+            console.error("Error updating skill:", error.message || error);
+            addToast(`Failed to update skill: ${error.message}`, 'error');
         }
     };
 

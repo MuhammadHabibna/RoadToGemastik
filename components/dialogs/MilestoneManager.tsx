@@ -10,11 +10,14 @@ import { Label } from "@/components/ui/label";
 import { useStore } from "@/lib/store";
 import { Edit2, Plus, GripVertical, CheckSquare, Square } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useToastStore } from "@/lib/toast-store";
 
 export default function MilestoneManager() {
     const { milestones, setMilestones } = useStore();
     const [newTitle, setNewTitle] = useState("");
     const [newDate, setNewDate] = useState("");
+
+    const { addToast } = useToastStore();
 
     // Fetch Milestones on Mount
     React.useEffect(() => {
@@ -46,30 +49,51 @@ export default function MilestoneManager() {
         setNewTitle("");
         setNewDate("");
 
-        // Supabase Insert
-        await supabase.from('milestones').insert({
-            title: title,
-            target_date: date,
-            status: 'Pending',
-            position: milestones.length + 1
-        });
+        try {
+            // Supabase Insert
+            const { error } = await supabase.from('milestones').insert({
+                title: title,
+                target_date: date,
+                status: 'Pending',
+                position: milestones.length + 1,
+                user_id: (await supabase.auth.getUser()).data.user?.id
+            });
+            if (error) throw error;
+            addToast("Milestone added successfully", "success");
+        } catch (error: any) {
+            console.error("Error adding milestone:", error);
+            addToast(`Failed to add milestone: ${error.message}`, "error");
+        }
     };
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'Done' ? 'Pending' : 'Done';
 
-        // Optimistic UI
-        const updated = milestones.map(m => m.id === id ? { ...m, status: newStatus } : m);
-        // @ts-ignore
-        setMilestones(updated);
+        try {
+            // Optimistic UI
+            const updated = milestones.map(m => m.id === id ? { ...m, status: newStatus } : m);
+            // @ts-ignore
+            setMilestones(updated);
 
-        await supabase.from('milestones').update({ status: newStatus }).eq('id', id);
+            const { error } = await supabase.from('milestones').update({ status: newStatus }).eq('id', id);
+            if (error) throw error;
+        } catch (error: any) {
+            console.error("Error updating milestone:", error);
+            addToast(`Update failed: ${error.message}`, "error");
+        }
     };
 
     const deleteMilestone = async (id: string) => {
-        await supabase.from('milestones').delete().eq('id', id);
-        // @ts-ignore
-        setMilestones(milestones.filter(m => m.id !== id));
+        try {
+            const { error } = await supabase.from('milestones').delete().eq('id', id);
+            if (error) throw error;
+            // @ts-ignore
+            setMilestones(milestones.filter(m => m.id !== id));
+            addToast("Milestone deleted", "info");
+        } catch (error: any) {
+            console.error("Error deleting milestone:", error);
+            addToast(`Delete failed: ${error.message}`, "error");
+        }
     };
 
     return (
