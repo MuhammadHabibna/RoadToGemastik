@@ -9,9 +9,36 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import MilestoneManager from "@/components/dialogs/MilestoneManager";
 
+import { supabase } from "@/lib/supabaseClient";
+
 export default function InteractiveRoadmap() {
-    const { milestones } = useStore();
+    const { milestones, setMilestones } = useStore();
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const fetchMilestones = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('milestones')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('target_date', { ascending: true });
+
+                if (data) setMilestones(data);
+            }
+        };
+
+        fetchMilestones();
+
+        const channel = supabase.channel('roadmap-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones' }, () => {
+                fetchMilestones();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [setMilestones]);
 
     // Default milestones if empty
     const displayMilestones = milestones.length > 0 ? milestones : [

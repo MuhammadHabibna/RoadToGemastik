@@ -28,9 +28,13 @@ export default function DailyGrind() {
     // React.useEffect to fetch logs on mount
     React.useEffect(() => {
         const fetchLogs = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
             const { data } = await supabase
                 .from('daily_logs')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(20);
 

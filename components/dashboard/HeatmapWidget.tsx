@@ -20,9 +20,13 @@ export default function HeatmapWidget() {
     const [loading, setLoading] = React.useState(true);
 
     const fetchLogs = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data } = await supabase
             .from('daily_logs')
             .select('created_at, duration_minutes')
+            .eq('user_id', user.id)
             .gte('created_at', startDate.toISOString());
 
         if (data) {

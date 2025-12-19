@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { Rocket, Moon, Sun } from 'lucide-react';
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 function ThemeToggle() {
     const { setTheme, theme } = useTheme()
@@ -30,9 +32,17 @@ const quotes = [
 export default function MissionHeader() {
     const [quote, setQuote] = useState("");
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    const [user, setUser] = useState<any>(null);
+    const router = useRouter();
 
     useEffect(() => {
         setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+        }
+        getUser();
 
         // Target Date: Oct 1, 2026
         const targetDate = new Date('2026-10-01T00:00:00');
@@ -52,6 +62,12 @@ export default function MissionHeader() {
 
         return () => clearInterval(interval);
     }, []);
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.refresh();
+        router.push('/login');
+    };
 
     return (
         <div className="w-full flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-background border-b border-border">
@@ -75,8 +91,16 @@ export default function MissionHeader() {
 
             {/* Theme Toggle & Countdown */}
             <div className="flex items-center gap-4">
+                <div className="hidden md:flex flex-col items-end mr-2">
+                    {user && <span className="text-xs font-mono text-muted-foreground">{user.email}</span>}
+                </div>
+                {user && (
+                    <Button variant="destructive" size="sm" onClick={handleLogout} className="h-8 bg-[#E62727] hover:bg-red-700">
+                        Logout
+                    </Button>
+                )}
                 <ThemeToggle />
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                     <p className="text-xs text-muted-foreground uppercase">Time to Launch</p>
                     <div className="text-3xl font-mono font-bold text-primary flex items-baseline gap-2">
                         <span>{timeLeft.days}d</span>
