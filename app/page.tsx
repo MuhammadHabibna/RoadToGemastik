@@ -5,6 +5,7 @@ import HeatmapWidget from "@/components/dashboard/HeatmapWidget";
 import DailyGrind from "@/components/dashboard/DailyGrind";
 import InteractiveRoadmap from "@/components/dashboard/InteractiveRoadmap";
 import IntegratedCalendar from "@/components/dashboard/IntegratedCalendar";
+import MissionLogStream from "@/components/dashboard/MissionLogStream";
 
 export const dynamic = 'force-dynamic'
 export default function Home() {
@@ -22,6 +23,10 @@ export default function Home() {
                 <section className="md:col-span-4 flex flex-col gap-4 min-h-[500px]">
                     <div className="flex-1 min-h-[300px]">
                         <RadarWidget />
+                    </div>
+                    {/* Mission Log Stream */}
+                    <div className="h-[250px]">
+                        <MissionLogStream />
                     </div>
                     <div className="h-[200px]">
                         <HeatmapWidget />
