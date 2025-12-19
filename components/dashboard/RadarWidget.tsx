@@ -22,7 +22,7 @@ export default function RadarWidget() {
         // 2. Fetch Current Progress (Dynamic from View)
         const { data: progress, error: progressError } = await supabase
             .from('skill_summary')
-            .select('focus_category, calculated_score');
+            .select('focus_category, calculated_score, log_count');
 
         // Merge logic
         const mergedData = FOCUS_CATEGORIES.map(cat => {
@@ -34,6 +34,7 @@ export default function RadarWidget() {
                 category: cat.value,
                 label: cat.label,
                 current_score: progressData?.calculated_score || 0, // From View
+                log_count: progressData?.log_count || 0,            // Level
                 target_score: targetData?.target_score || 100,      // From Skills Table
                 fullMark: 100
             };
@@ -72,8 +73,9 @@ export default function RadarWidget() {
             const data = payload[0].payload;
             return (
                 <div className="bg-background/95 backdrop-blur border border-border p-2 rounded-lg shadow-lg text-xs">
-                    <p className="font-bold mb-1">{data.label}</p>
-                    <p className="text-[#1E93AB]">Current: {data.current_score}</p>
+                    <p className="font-bold mb-1">{data.labelPretty}</p>
+                    <p className="text-[#1E93AB]">Level: {data.level}</p>
+                    <p className="text-[#1E93AB]">Score: {data.current_score}</p>
                     <p className="text-[#E62727]">Target: {data.target_score}</p>
                 </div>
             );
@@ -85,17 +87,26 @@ export default function RadarWidget() {
         category: c.value,
         label: c.label,
         current_score: 0,
+        log_count: 0,
         target_score: 100,
         fullMark: 100
     }));
 
+    // Calculate Max Score for Infinite Growth Domain
+    const maxScore = Math.max(
+        100,
+        ...displayData.map((s: any) => s.current_score || 0),
+        ...displayData.map((s: any) => s.target_score || 0)
+    );
+
     // Transform for Recharts
     const finalData = displayData.map((s: any) => ({
-        subject: s.category,
-        label: s.label || s.category,
+        subject: `${s.label || s.category} (Lv. ${s.log_count || 0})`, // Format: "NLP (Lv. 12)"
+        labelPretty: s.label || s.category, // Clean label for tooltip
+        level: s.log_count || 0,
         A: s.current_score,
         B: s.target_score,
-        fullMark: 100
+        fullMark: maxScore
     }));
 
 
@@ -114,7 +125,12 @@ export default function RadarWidget() {
                             dataKey="subject"
                             tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 9 }}
                         />
-                        <PolarRadiusAxis angle={30} tick={false} axisLine={false} />
+                        <PolarRadiusAxis
+                            angle={30}
+                            tick={false}
+                            axisLine={false}
+                            domain={[0, maxScore]}
+                        />
 
                         <Tooltip content={<CustomTooltip />} />
 
