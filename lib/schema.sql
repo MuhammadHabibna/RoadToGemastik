@@ -97,4 +97,22 @@ alter table milestones enable row level security;
 drop policy if exists "Users can all on milestones" on milestones;
 create policy "Users can all on milestones"
   on milestones for all
+-- 4. Create skills table (Radar Chart Data)
+create table if not exists skills (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null default auth.uid(),
+  category text not null,
+  current_score integer default 0,
+  target_score integer default 100,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, category)
+);
+
+-- Enable RLS
+alter table skills enable row level security;
+
+-- Policies for skills
+drop policy if exists "Users can all on skills" on skills;
+create policy "Users can all on skills"
+  on skills for all
   using ( auth.uid() = user_id );

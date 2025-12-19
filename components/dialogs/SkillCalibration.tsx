@@ -16,10 +16,26 @@ export default function SkillCalibration() {
     const { skills, updateSkill } = useStore();
     const [loading, setLoading] = useState(false);
 
-    const handleUpdate = async (id: string, val: number) => {
+    const handleUpdate = async (id: string, val: number, category?: string) => {
+        // Optimistic update
         updateSkill(id, val);
-        // Debounced save would be better, but simple save on change for now
-        await supabase.from('skills').update({ current_score: val }).eq('id', id);
+
+        // Database update (Upsert to handle new skills)
+        if (id.startsWith('temp-') && category) {
+            const { data, error } = await supabase
+                .from('skills')
+                .upsert({ category: category, current_score: val, target_score: 100 }, { onConflict: 'user_id, category' })
+                .select()
+                .single();
+
+            if (data) {
+                // Replace temp ID with real one in store
+                // This requires a more complex store action or just re-fetch. 
+                // For now, simple re-fetch by invalidating (or relying on subscription) is safest.
+            }
+        } else {
+            await supabase.from('skills').update({ current_score: val }).eq('id', id);
+        }
     };
 
     return (
@@ -47,7 +63,7 @@ export default function SkillCalibration() {
                                     min="0" max="100"
                                     className="col-span-2 accent-primary h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                                     value={skill.current_score}
-                                    onChange={(e) => handleUpdate(skill.id, parseInt(e.target.value))}
+                                    onChange={(e) => handleUpdate(skill.id, parseInt(e.target.value), skill.category)}
                                 />
                             </div>
                         ))}

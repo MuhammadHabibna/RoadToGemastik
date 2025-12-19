@@ -1,8 +1,8 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Settings2 } from "lucide-react";
@@ -12,62 +12,37 @@ import { supabase } from "@/lib/supabaseClient";
 import { FOCUS_CATEGORIES } from "@/lib/constants";
 
 export default function RadarWidget() {
-    const { skills } = useStore();
-    const [chartData, setChartData] = React.useState<any[]>([]);
+    const { skills, setSkills } = useStore();
+    const [loading, setLoading] = useState(true);
 
-    React.useEffect(() => {
-        const fetchData = async () => {
-            // Fetch all logs with mood and duration
-            const { data: logs } = await supabase
-                .from('daily_logs')
-                .select('focus_category, duration_minutes, mood_score, xp_value');
+    const fetchData = async () => {
+        const { data: skillsData, error } = await supabase
+            .from('skills')
+            .select('*');
 
-            if (!logs) return;
-
-            // Aggregate XP per category
-            // Formula: Duration (mins) * (Mood / 3) 
-            // Scaling: 1 hour at mood 3 = 60 XP. 1 hour at mood 5 = 100 XP.
-            const xpTotals: Record<string, number> = {};
-            let globalMaxXP = 100; // Minimum scale to avoid graph looking empty at start
-
-            logs.forEach((log: any) => {
-                const category = log.focus_category;
-                const duration = log.duration_minutes || 0;
-                const mood = log.mood_score || 3;
-
-                // XP Calculation (Use stored value if available, else calculate)
-                const xp = log.xp_value || Math.round(duration * (mood / 3));
-
-                if (!xpTotals[category]) xpTotals[category] = 0;
-                xpTotals[category] += xp;
-            });
-
-            // Find the highest skill to calibrate the chart
-            Object.values(xpTotals).forEach(val => {
-                if (val > globalMaxXP) globalMaxXP = val;
-            });
-
-            // Add a buffer to the max so the top point isn't hitting the edge hard
-            const displayMax = Math.round(globalMaxXP * 1.2);
-
-            const newData = FOCUS_CATEGORIES.map(cat => {
-                const currentXP = xpTotals[cat.value] || 0;
-
+        if (skillsData) {
+            // Merge with constants to ensure all categories exist (handling new user case)
+            const mergedData = FOCUS_CATEGORIES.map(cat => {
+                const found = skillsData.find((s: any) => s.category === cat.value);
                 return {
-                    subject: cat.value,
-                    A: currentXP,
-                    B: displayMax, // Target line effectively becomes the "Outer Rim" or next level
-                    fullMark: displayMax
+                    id: found?.id || 'temp-' + cat.value,
+                    category: cat.value,
+                    label: cat.label,
+                    current_score: found?.current_score || 0,
+                    target_score: found?.target_score || 100,
+                    fullMark: 100
                 };
             });
+            setSkills(mergedData);
+        }
+        setLoading(false);
+    };
 
-            setChartData(newData);
-        };
-
+    React.useEffect(() => {
         fetchData();
 
-        const channel = supabase.channel('schema-db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_logs' }, () => {
+        const channel = supabase.channel('skills-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'skills' }, () => {
                 fetchData();
             })
             .subscribe();
@@ -75,12 +50,38 @@ export default function RadarWidget() {
         return () => { supabase.removeChannel(channel); };
     }, []);
 
-    // Initial empty state
-    if (chartData.length === 0) {
-        // Render minimal empty state
-    }
+    // Custom Tooltip
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-background/95 backdrop-blur border border-border p-2 rounded-lg shadow-lg text-xs">
+                    <p className="font-bold mb-1">{data.label}</p>
+                    <p className="text-[#1E93AB]">Current: {data.current_score}</p>
+                    <p className="text-[#E62727]">Target: {data.target_score}</p>
+                </div>
+            );
+        }
+        return null;
+    };
 
-    const finalData = chartData.length > 0 ? chartData : FOCUS_CATEGORIES.map(cat => ({ subject: cat.value, A: 0, B: 100, fullMark: 100 }));
+    const displayData = skills.length > 0 ? skills : FOCUS_CATEGORIES.map(c => ({
+        category: c.value,
+        label: c.label,
+        current_score: 0,
+        target_score: 100,
+        fullMark: 100
+    }));
+
+    // Transform for Recharts
+    // We Map 'category' to 'subject' for the axis
+    const finalData = displayData.map((s: any) => ({
+        subject: s.category, // Use short value for axis if preferred, or s.label for long
+        label: s.label || s.category, // Pass label for tooltip
+        A: s.current_score,
+        B: s.target_score,
+        fullMark: 100
+    }));
 
 
     return (
@@ -92,10 +93,16 @@ export default function RadarWidget() {
             </CardHeader>
             <CardContent className="flex-1 min-h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={finalData}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={finalData}>
                         <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10 }} />
+                        <PolarAngleAxis
+                            dataKey="subject"
+                            tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 9 }}
+                        />
                         <PolarRadiusAxis angle={30} tick={false} axisLine={false} />
+
+                        <Tooltip content={<CustomTooltip />} />
+
                         <Radar
                             name="Current Skill"
                             dataKey="A"
@@ -110,7 +117,7 @@ export default function RadarWidget() {
                             strokeDasharray="4 4"
                             fill="transparent"
                         />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Legend wrapperStyle={{ fontSize: '10px', marginTop: '10px' }} />
                     </RadarChart>
                 </ResponsiveContainer>
             </CardContent>
