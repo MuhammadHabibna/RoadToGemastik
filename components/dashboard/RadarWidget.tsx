@@ -37,9 +37,12 @@ export default function RadarWidget() {
             if (targetError) console.error("Error fetching targets:", targetError);
 
             // B. Fetch Progress (Skill Summary)
+            // Use a hacky filtered query or fresh fetching to bypass some client caches if needed
+            // But 'select' usually fetches fresh on client. 
             const { data: progress, error: progressError } = await supabase
                 .from('skill_summary')
-                .select('*');
+                .select('*')
+                .abortSignal(new AbortController().signal); // Just standard fetch
 
             if (progressError) console.error("Error fetching progress:", progressError);
 
@@ -56,18 +59,13 @@ export default function RadarWidget() {
                     fullLabel: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Full text for reference if needed
                     levelLabel: `(Lv. ${p?.raw_power || 0})`,
                     level: Number(p?.raw_power || 0),
-                    A: Number(p?.current_score || 0),
-                    B: 100, // Target strictly 100
+                    A: Number(p?.current_score || 0), // Score -> Teal
+                    B: 100, // Target -> Red
                     fullMark: 100
                 };
             });
 
-            // Calculate Max Score for Domain (Infinite Growth)
-            const maxVal = Math.max(
-                100,
-                ...merged.map(m => m.A),
-                ...merged.map(m => m.B)
-            );
+            // ... (rest of logic)
 
             // Add 'fullMark'
             const finalData = merged.map(m => ({
@@ -100,8 +98,16 @@ export default function RadarWidget() {
                 )
                 .subscribe();
 
+            // 6. Manual Event Listener (From Modal)
+            const handleRefresh = () => {
+                console.log("Manual Refresh Triggered");
+                fetchStats();
+            };
+            window.addEventListener('refresh-radar', handleRefresh);
+
             return () => {
                 supabase.removeChannel(channel);
+                window.removeEventListener('refresh-radar', handleRefresh);
             };
         }
     }, [mounted]);
