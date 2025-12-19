@@ -131,8 +131,8 @@ export default function RadarWidget() {
                 <CardTitle className="text-lg font-mono uppercase tracking-wider text-primary">Bytelogic Stats</CardTitle>
                 <SkillCalibration />
             </CardHeader>
-            <CardContent className="flex-1 min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
+            <CardContent className="flex-1 min-h-[300px]">
+                <ResponsiveContainer width="100%" height={300}>
                     <RadarChart cx="50%" cy="50%" outerRadius="70%" data={finalData}>
                         <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
                         <PolarAngleAxis
