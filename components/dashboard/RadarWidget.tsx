@@ -47,32 +47,13 @@ export default function RadarWidget() {
             // DEBUG: Raw Payload
             console.log("Raw Response from Supabase (skill_summary):", progress);
 
-            // MANUAL OVERRIDE FOR TESTING (Request: If A is 0, set to 10)
-            if (progress) {
-                progress.forEach((p: any) => {
-                    if (!p.current_score || p.current_score === 0) {
-                        console.warn("Override: Force-setting 0 score to 10 for visibility check.");
-                        p.current_score = 10;
-                        p.raw_power = 1;
-                    }
-                });
-            }
-
-            if (progressError) console.error("Error fetching progress:", progressError);
-
-            console.log("Bytelogic Data (Progress):", progress);
-            console.log("Raw View Data from Supabase:", progress); // DEBUG RAW
-            console.log("View categories:", progress?.map((p: any) => p.focus_category)); // DEBUG SYNC
-
             // C. Merge & Map Data
             const merged = FOCUS_CATEGORIES.map(cat => {
                 const t = targets?.find((x: any) => x.category === cat.value);
                 const p = progress?.find((x: any) => x.focus_category === cat.value);
 
                 return {
-                    subject: cat.label, // Just the name for the axis key
-                    fullLabel: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Full text for reference if needed
-                    levelLabel: `(Lv. ${p?.raw_power || 0})`,
+                    subject: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Simple label string
                     level: Number(p?.raw_power || 0),
                     A: Number(p?.current_score || 0), // Score -> Teal
                     B: 100, // Target -> Red
@@ -165,33 +146,7 @@ export default function RadarWidget() {
                         <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
                         <PolarAngleAxis
                             dataKey="subject"
-                            tick={({ payload, x, y, textAnchor, stroke, radius }) => {
-                                const data = chartData.find(d => d.subject === payload.value);
-                                return (
-                                    <g transform={`translate(${x},${y})`}>
-                                        <text
-                                            x={0}
-                                            y={0}
-                                            dy={0}
-                                            textAnchor={textAnchor}
-                                            fill="hsla(var(--muted-foreground))"
-                                            fontSize={10}
-                                            fontWeight="bold"
-                                        >
-                                            {payload.value}
-                                        </text>
-                                        <text
-                                            x={0}
-                                            y={12}
-                                            textAnchor={textAnchor}
-                                            fill="#1E93AB"
-                                            fontSize={9}
-                                        >
-                                            {data?.levelLabel || ""}
-                                        </text>
-                                    </g>
-                                );
-                            }}
+                            tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10, fontWeight: 'bold' }}
                         />
                         <PolarRadiusAxis
                             angle={30}
