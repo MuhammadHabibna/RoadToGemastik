@@ -55,7 +55,7 @@ export default function RadarWidget() {
                     labelPretty: cat.label,
                     level: p?.raw_power || 0,
                     A: p?.current_score || 0,
-                    B: t?.target_score || 100, // Default target 100
+                    B: 100, // Target strictly 100
                     fullMark: 100
                 };
             });
@@ -67,17 +67,11 @@ export default function RadarWidget() {
                 ...merged.map(m => m.B)
             );
 
-            // Add 'fullMark' and 'placeholder' for zero-state
-            const isAllZero = merged.every(m => m.A === 0);
+            // Add 'fullMark'
             const finalData = merged.map(m => ({
                 ...m,
                 fullMark: maxVal,
-                placeholder: isAllZero ? (maxVal * 0.6) : 0, // 60% faint radar if all zero
-                // Force line visibility if A is 0 by using a tiny epsilon if needed, 
-                // but "Ghost Radar" (placeholder) is better. 
-                // Let's also ensure A is at least 0.1 if we want *something* to draw, 
-                // but strictly following user: "if all data values (A) are 0...".
-                // I will stick to Ghost Radar logic as it's cleaner.
+                placeholder: 0 // Explicitly 0, no ghost radar
             }));
 
             setChartData(finalData);
@@ -160,17 +154,7 @@ export default function RadarWidget() {
                             labelStyle={{ fontWeight: 'bold', color: '#333' }}
                         />
 
-                        {/* Ghost Radar for Zero State */}
-                        {isAllZero && (
-                            <Radar
-                                name="Placeholder"
-                                dataKey="placeholder"
-                                stroke="#1E93AB"
-                                strokeOpacity={0.3}
-                                fill="#1E93AB"
-                                fillOpacity={0.1}
-                            />
-                        )}
+
 
                         {/* 4. Correct Data Mapping */}
                         <Radar
