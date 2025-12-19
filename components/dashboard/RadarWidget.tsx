@@ -37,12 +37,26 @@ export default function RadarWidget() {
             if (targetError) console.error("Error fetching targets:", targetError);
 
             // B. Fetch Progress (Skill Summary)
-            // Use a hacky filtered query or fresh fetching to bypass some client caches if needed
-            // But 'select' usually fetches fresh on client. 
+            // Force fresh fetch
             const { data: progress, error: progressError } = await supabase
                 .from('skill_summary')
-                .select('*')
-                .abortSignal(new AbortController().signal); // Just standard fetch
+                .select('*');
+
+            if (progressError) console.error("Error fetching progress:", progressError);
+
+            // DEBUG: Raw Payload
+            console.log("Raw Response from Supabase (skill_summary):", progress);
+
+            // MANUAL OVERRIDE FOR TESTING (Request: If A is 0, set to 10)
+            if (progress) {
+                progress.forEach((p: any) => {
+                    if (!p.current_score || p.current_score === 0) {
+                        console.warn("Override: Force-setting 0 score to 10 for visibility check.");
+                        p.current_score = 10;
+                        p.raw_power = 1;
+                    }
+                });
+            }
 
             if (progressError) console.error("Error fetching progress:", progressError);
 

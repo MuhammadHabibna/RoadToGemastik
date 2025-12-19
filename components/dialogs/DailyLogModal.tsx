@@ -67,7 +67,10 @@ export default function DailyLogModal() {
             // 2. Supabase Insert
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                throw new Error("User not authenticated");
+                // Explicit user check as requested
+                addToast("Please login to commit logs.", 'error');
+                setLoading(false);
+                return;
             }
 
             console.log("Committing Log:", { ...newLog, user_id: user.id });
@@ -79,7 +82,7 @@ export default function DailyLogModal() {
                 mood_score: data.mood,
                 duration_minutes: data.duration,
                 xp_value: xp,
-                user_id: user.id
+                user_id: user.id // Explicit assignment
             });
 
             if (error) throw error; // Throw to catch block
