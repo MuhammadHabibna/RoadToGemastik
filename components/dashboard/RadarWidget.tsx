@@ -14,6 +14,14 @@ export default function RadarWidget() {
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+            console.warn("RadarWidget: No active session found.");
+            setLoading(false);
+            return;
+        }
+
         // 1. Fetch Targets (Manual Goals)
         const { data: targets, error: targetError } = await supabase
             .from('skills')
@@ -23,11 +31,15 @@ export default function RadarWidget() {
         // User specified "raw_power" and "current_score" fields in the new view
         const { data: progress, error: progressError } = await supabase
             .from('skill_summary')
-            .select('*'); // Select all to be safe, or specify: focus_category, current_score, raw_power
+            .select('*');
+
+        console.log("RadarWidget: Raw Data from View:", progress);
+        if (progressError) console.error("RadarWidget Error:", progressError);
 
         // Merge logic
         const mergedData = FOCUS_CATEGORIES.map(cat => {
             const targetData = targets?.find((t: any) => t.category === cat.value);
+            // Ensure strict string matching for category
             const progressData = progress?.find((p: any) => p.focus_category === cat.value);
 
             return {
@@ -41,6 +53,7 @@ export default function RadarWidget() {
             };
         });
 
+        console.log("RadarWidget: Merged Data for Chart:", mergedData);
         setSkills(mergedData);
         setLoading(false);
     };
