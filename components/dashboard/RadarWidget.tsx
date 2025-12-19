@@ -94,6 +94,9 @@ export default function RadarWidget() {
         ...displayData.map((s: any) => s.target_score || 0)
     );
 
+    // Check if user has any data
+    const isAllZero = displayData.every((s: any) => (s.current_score || 0) === 0);
+
     // Transform for Recharts
     const finalData = displayData.map((s: any) => ({
         subject: `${s.label || s.category} (Lv. ${s.level || 0})`, // Format: "NLP (Lv. 12)"
@@ -101,12 +104,15 @@ export default function RadarWidget() {
         level: s.level || 0,
         A: s.current_score,
         B: s.target_score,
+        // Visual Fallback: 60% fill if all zero, else 0
+        placeholder: isAllZero ? (maxScore * 0.6) : 0,
         fullMark: maxScore
     }));
 
 
     // Debugging: Validate Data Delivery
     console.table(finalData);
+    console.log(`RadarWidget: Fetching complete. Zero State: ${isAllZero}`);
 
     if (!isMounted) return null;
 
@@ -141,6 +147,18 @@ export default function RadarWidget() {
                         />
 
                         <Tooltip content={<CustomTooltip />} />
+
+                        {/* Placeholder Radar (Ghost) */}
+                        {isAllZero && (
+                            <Radar
+                                name="Placeholder"
+                                dataKey="placeholder"
+                                stroke="#1E93AB"
+                                strokeOpacity={0.2}
+                                fill="#1E93AB"
+                                fillOpacity={0.05}
+                            />
+                        )}
 
                         <Radar
                             name="Current Skill"
