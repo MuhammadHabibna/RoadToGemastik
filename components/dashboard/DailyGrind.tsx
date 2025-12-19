@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 // ContextMenu imports removed as component is missing
-import { Trash } from "lucide-react";
+// ContextMenu imports removed as component is missing
 import { supabase } from "@/lib/supabaseClient";
 
 // ... imports
