@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";  // Import Textarea
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -120,7 +121,29 @@ export default function DailyLogModal() {
                                 <option key={cat.value} value={cat.value}>{cat.label}</option>
                             ))}
                         </select>
-                        {errors.category && <span className="text-xs text-red-500 col-start-2 italic">{errors.category.message}</span>}
+                    </div>
+
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="duration" className="text-right">Duration (m)</Label>
+                        <Input
+                            id="duration"
+                            type="number"
+                            className="col-span-3"
+                            placeholder="60"
+                            {...register("duration")}
+                        />
+                        {errors.duration && <span className="text-xs text-red-500 col-start-2 col-span-3 italic">{errors.duration.message}</span>}
+                    </div>
+
+                    <div className="grid grid-cols-4 items-start gap-4">
+                        <Label htmlFor="description" className="text-right pt-2">Notes / Achievement</Label>
+                        <Textarea
+                            id="description"
+                            className="col-span-3 min-h-[100px]"
+                            placeholder="What did you accomplish? e.g. Implemented YOLOv8"
+                            {...register("description")}
+                        />
+                        {errors.description && <span className="text-xs text-red-500 col-start-2 col-span-3 italic">{errors.description.message}</span>}
                     </div>
                 </form>
                 <DialogFooter>
