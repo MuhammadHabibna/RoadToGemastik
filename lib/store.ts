@@ -9,6 +9,7 @@ export interface DailyLog {
     description: string;
     mood_score: number;
     duration_minutes: number;
+    xp_value?: number;
 }
 
 export interface Milestone {

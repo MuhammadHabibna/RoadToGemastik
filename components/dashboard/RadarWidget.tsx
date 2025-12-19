@@ -20,7 +20,7 @@ export default function RadarWidget() {
             // Fetch all logs with mood and duration
             const { data: logs } = await supabase
                 .from('daily_logs')
-                .select('focus_category, duration_minutes, mood_score');
+                .select('focus_category, duration_minutes, mood_score, xp_value');
 
             if (!logs) return;
 
@@ -35,8 +35,8 @@ export default function RadarWidget() {
                 const duration = log.duration_minutes || 0;
                 const mood = log.mood_score || 3;
 
-                // XP Calculation
-                const xp = Math.round(duration * (mood / 3));
+                // XP Calculation (Use stored value if available, else calculate)
+                const xp = log.xp_value || Math.round(duration * (mood / 3));
 
                 if (!xpTotals[category]) xpTotals[category] = 0;
                 xpTotals[category] += xp;

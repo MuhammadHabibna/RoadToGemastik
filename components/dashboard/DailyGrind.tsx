@@ -14,8 +14,16 @@ import { supabase } from "@/lib/supabaseClient";
 import DailyLogModal from "@/components/dialogs/DailyLogModal";
 import { ClientTime } from "./ClientTime";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MoreVertical, Trash2 } from "lucide-react";
+import { useToastStore } from "@/lib/toast-store";
+
+// ... existing imports
+
 export default function DailyGrind() {
-    const { logs, setLogs } = useStore();
+    const { logs, setLogs, removeLog } = useStore();
+    const { addToast } = useToastStore();
+    const [loading, setLoading] = useState(true);
 
     // React.useEffect to fetch logs on mount
     React.useEffect(() => {
@@ -29,6 +37,7 @@ export default function DailyGrind() {
             if (data) {
                 setLogs(data);
             }
+            setLoading(false);
         };
 
         fetchLogs();
@@ -36,8 +45,6 @@ export default function DailyGrind() {
         // Subscribe to real-time changes
         const channel = supabase.channel('daily-grind-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_logs' }, (payload) => {
-                // Simple refresh strategy: re-fetch or optimistically update
-                // For now, re-fetch is safest to sync all clients
                 fetchLogs();
             })
             .subscribe();
@@ -45,13 +52,13 @@ export default function DailyGrind() {
         return () => { supabase.removeChannel(channel); };
     }, [setLogs]);
 
-    const displayLogs = logs;
-
     const deleteLog = async (id: string) => {
         const { error } = await supabase.from('daily_logs').delete().eq('id', id);
         if (!error) {
-            // sync with store
-            useStore.getState().removeLog(id);
+            removeLog(id);
+            addToast("Log deleted successfully", 'info');
+        } else {
+            addToast("Failed to delete log", 'error');
         }
     };
 
@@ -82,35 +89,50 @@ export default function DailyGrind() {
                     <DailyLogModal />
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {displayLogs.map((log) => (
-                        <div key={log.id} className="relative pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors py-1 group">
+                    {logs.map((log) => (
+                        <div key={log.id} className="relative pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors py-1 group pr-2">
                             <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-primary ring-2 ring-background" />
                             <div className="flex justify-between items-start">
                                 <span className="text-xs font-mono text-muted-foreground">
                                     <ClientTime timestamp={log.created_at} />
                                 </span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-secondary uppercase tracking-tighter">{log.focus_category}</span>
-                                    <button
-                                        onClick={() => deleteLog(log.id)}
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-red-400"
-                                        title="Delete Log"
-                                    >
-                                        <Trash className="w-3 h-3" />
-                                    </button>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-xs font-bold text-secondary uppercase tracking-tighter mr-2">{log.focus_category}</span>
+
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary/10 rounded">
+                                                <MoreVertical className="w-3 h-3 text-muted-foreground" />
+                                            </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-32 p-1" align="end">
+                                            <button
+                                                onClick={() => deleteLog(log.id)}
+                                                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:bg-red-400/10 rounded-sm transition-colors"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                                Delete
+                                            </button>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </div>
-                            <p className="text-sm font-medium mt-1">{log.description}</p>
+                            <p className="text-sm font-medium mt-1 pr-4 break-words line-clamp-2" title={log.description}>{log.description}</p>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] bg-secondary/10 text-secondary px-1.5 py-0.5 rounded">
                                     {log.duration_minutes}m
                                 </span>
                                 <span className="text-[10px] font-mono text-muted-foreground">
-                                    +{Math.round(log.duration_minutes * ((log.mood_score || 3) / 3))} XP
+                                    +{log.xp_value || Math.round(log.duration_minutes * ((log.mood_score || 3) / 3))} XP
                                 </span>
                             </div>
                         </div>
                     ))}
+                    {logs.length === 0 && !loading && (
+                        <div className="text-center py-8 text-muted-foreground text-xs">
+                            No logs yet. Start grinding!
+                        </div>
+                    )}
                 </div>
             </div>
         </Card>
