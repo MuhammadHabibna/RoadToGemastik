@@ -44,6 +44,7 @@ export default function RadarWidget() {
             if (progressError) console.error("Error fetching progress:", progressError);
 
             console.log("Bytelogic Data (Progress):", progress);
+            console.log("View categories:", progress?.map((p: any) => p.focus_category)); // DEBUG SYNC
 
             // C. Merge & Map Data
             const merged = FOCUS_CATEGORIES.map(cat => {
@@ -51,8 +52,9 @@ export default function RadarWidget() {
                 const p = progress?.find((x: any) => x.focus_category === cat.value);
 
                 return {
-                    subject: `${cat.label} (Lv. ${p?.raw_power || 0})`,
-                    labelPretty: cat.label,
+                    subject: cat.label, // Just the name for the axis key
+                    fullLabel: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Full text for reference if needed
+                    levelLabel: `(Lv. ${p?.raw_power || 0})`,
                     level: p?.raw_power || 0,
                     A: p?.current_score || 0,
                     B: 100, // Target strictly 100
@@ -135,7 +137,33 @@ export default function RadarWidget() {
                         <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
                         <PolarAngleAxis
                             dataKey="subject"
-                            tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10 }}
+                            tick={({ payload, x, y, textAnchor, stroke, radius }) => {
+                                const data = chartData.find(d => d.subject === payload.value);
+                                return (
+                                    <g transform={`translate(${x},${y})`}>
+                                        <text
+                                            x={0}
+                                            y={0}
+                                            dy={0}
+                                            textAnchor={textAnchor}
+                                            fill="hsla(var(--muted-foreground))"
+                                            fontSize={10}
+                                            fontWeight="bold"
+                                        >
+                                            {payload.value}
+                                        </text>
+                                        <text
+                                            x={0}
+                                            y={12}
+                                            textAnchor={textAnchor}
+                                            fill="#1E93AB"
+                                            fontSize={9}
+                                        >
+                                            {data?.levelLabel}
+                                        </text>
+                                    </g>
+                                );
+                            }}
                         />
                         <PolarRadiusAxis
                             angle={30}

@@ -71,6 +71,7 @@ export default function DailyLogModal() {
             }
 
             console.log("Committing Log:", { ...newLog, user_id: user.id });
+            console.log("Submitting category:", data.category); // DEBUG SYNC
 
             const { error } = await supabase.from('daily_logs').insert({
                 focus_category: data.category,
