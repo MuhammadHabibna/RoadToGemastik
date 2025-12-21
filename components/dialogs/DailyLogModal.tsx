@@ -80,9 +80,9 @@ export default function DailyLogModal() {
                 focus_category: data.category,
                 description: data.description,
                 mood_score: data.mood,
-                duration_minutes: data.duration,
+                duration: Number(data.duration), // Changed to 'duration'
                 xp_value: xp,
-                user_id: user.id // Explicit assignment
+                user_id: user.id // Explicit assignment,
             });
 
             if (error) throw error; // Throw to catch block
