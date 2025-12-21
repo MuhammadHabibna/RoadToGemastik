@@ -162,6 +162,7 @@ export default function RadarWidget() {
                                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                             }}
                             labelStyle={{ fontWeight: 'bold', color: '#333' }}
+                            formatter={(value: number) => [`${value} Minutes`, '']}
                         />
 
                         {/* 4. Correct Data Mapping */}
@@ -178,6 +179,14 @@ export default function RadarWidget() {
                             stroke="#E62727"
                             strokeDasharray="4 4"
                             fill="transparent"
+                        />
+                        {/* Center Dot */}
+                        <Radar
+                            dataKey="placeholder"
+                            stroke="none"
+                            fill="none"
+                            dot={{ r: 3, fill: '#E62727', strokeWidth: 0 }}
+                            isAnimationActive={false}
                         />
                         <Legend wrapperStyle={{ fontSize: '11px', marginTop: '5px' }} />
                     </RadarChart>
