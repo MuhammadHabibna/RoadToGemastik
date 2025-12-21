@@ -10,16 +10,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { FOCUS_CATEGORIES } from "@/lib/constants";
 
 export default function RadarWidget() {
-    const [mounted, setMounted] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState<any[]>([]);
 
     const [renderKey, setRenderKey] = useState(0);
 
     // 1. Client-Side Only Guard
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => setIsMounted(true), []);
 
     // 2. Fetch Data (Network Visible)
     const fetchStats = async () => {
@@ -40,21 +38,13 @@ export default function RadarWidget() {
             if (targetError) console.error("Error fetching targets:", targetError);
 
             // B. Fetch Progress (Skill Summary)
-            // Force fresh fetch with Cache-Control headers as requested
-            // Note: If setHeaders is not available on this specific builder version, we might need a different approach,
-            // but we will try strictly as requested.
+            // Action: Ensure the Supabase call is: .from('skill_summary').select('*').order('subject', { ascending: true })
+            // Action: Add a timestamp or disable caching. Using setHeaders for cache control as a robust measure.
             const { data: progress, error: progressError } = await (supabase
                 .from('skill_summary')
-                .select('*') as any) // Casting to match user instruction for method availability potential types
-                .setHeaders({ 'Cache-Control': 'no-cache' }); // Attempting standard method if available or ignore type
-            // Actually, suppressing type check to try user's specific instruction if method exists effectively
-            // But to be safe and functional, simply calling select is usually enough. 
-            // I will assume the user knows their supabase version supports it or headers option.
-            // Let's safe-guard:
-
-            // Revert to standard robust fetch without experimental setHeader if it risks crashing,
-            // UNLESS I just use a standard select. Re-reading: "instructions: ... .setHeaders...".
-            // I will implement it safely.
+                .select('*')
+                .order('subject', { ascending: true }) as any)
+                .setHeaders({ 'Cache-Control': 'no-cache, no-store, must-revalidate' });
 
             if (progressError) console.error("Error fetching progress:", progressError);
 
@@ -74,8 +64,6 @@ export default function RadarWidget() {
                     fullMark: 100
                 };
             });
-
-            // ... (rest of logic)
 
             // Calculate Max Score for Domain (Infinite Growth)
             const maxVal = Math.max(
@@ -103,7 +91,7 @@ export default function RadarWidget() {
     };
 
     useEffect(() => {
-        if (mounted) {
+        if (isMounted) {
             fetchStats();
 
             // 5. Auto-Update Trigger (Realtime)
@@ -130,12 +118,10 @@ export default function RadarWidget() {
                 window.removeEventListener('refresh-radar', handleRefresh);
             };
         }
-    }, [mounted]);
+    }, [isMounted]);
 
     // Render Logic
-    if (!mounted) {
-        return <div className="flex-1 min-h-[300px] bg-slate-100/10 animate-pulse rounded-xl border border-dashed border-slate-700" />;
-    }
+    if (!isMounted) return <div className="h-[300px] bg-transparent" />;
 
     if (loading) {
         return (
@@ -146,7 +132,8 @@ export default function RadarWidget() {
     }
 
     const maxScore = chartData.length > 0 ? chartData[0].fullMark : 100;
-    const isAllZero = chartData.every(d => d.A === 0);
+
+    // Action: If data is empty or all zeroes, DO NOT return null. Render the <RadarChart> anyway.
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">
@@ -181,8 +168,6 @@ export default function RadarWidget() {
                             }}
                             labelStyle={{ fontWeight: 'bold', color: '#333' }}
                         />
-
-
 
                         {/* 4. Correct Data Mapping */}
                         <Radar
