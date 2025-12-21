@@ -48,28 +48,22 @@ export default function RadarWidget() {
                 const s = skills?.find((x: any) => x.category === cat.value);
 
                 return {
-                    subject: `${cat.label} (Lv. ${s?.current_score || 0})`, // Label with Level
+                    subject: `${cat.label} (${s?.current_score || 0}m)`, // Label with Minutes "NLP (120m)"
                     level: Number(s?.current_score || 0),
-                    A: Number(s?.current_score || 0), // Current Score -> Teal
-                    B: Number(s?.target_score || 100), // Target Score -> Red
-                    fullMark: 100
+                    A: Number(s?.current_score || 0), // Current Minutes -> Teal
+                    B: Number(s?.target_score || 100), // Target -> Red
+                    fullMark: 100 // Legacy prop, unused with 'auto' domain
                 };
             });
 
             // Action: Ensure Visibility via console.table
             console.table(merged);
 
-            // Calculate Max Score for Domain (Infinite Growth)
-            const maxVal = Math.max(
-                100,
-                ...merged.map(m => m.A),
-                ...merged.map(m => m.B)
-            );
+            // Calculate Max Score for Domain (Infinite Growth) - Logic handled by 'auto' domain now
 
-            // Add 'fullMark'
+            // Add 'fullMark' - passing through merged
             const finalData = merged.map(m => ({
                 ...m,
-                fullMark: maxVal,
                 placeholder: 0
             }));
 
@@ -116,7 +110,7 @@ export default function RadarWidget() {
     }, [mounted]);
 
     // Render Logic
-    if (!mounted) return <div className="h-[300px]" />;
+    if (!mounted) return <div className="h-[300px] animate-pulse bg-slate-900/50" />;
 
     if (loading) {
         return (
@@ -126,9 +120,8 @@ export default function RadarWidget() {
         );
     }
 
-    const maxScore = chartData.length > 0 ? chartData[0].fullMark : 100;
-
-    // Action: REMOVE "Calibrating" Guard. Always render checks.
+    // Dynamic Max Score Calculation (Optional, Recharts 'auto' handles it, but good for custom ticks if needed)
+    // const maxScore = Math.max(100, ...chartData.map(d => Math.max(d.A, d.B)));
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">
@@ -151,7 +144,7 @@ export default function RadarWidget() {
                             angle={30}
                             tick={false}
                             axisLine={false}
-                            domain={[0, maxScore]}
+                            domain={[0, 'auto']}
                         />
 
                         <Tooltip
