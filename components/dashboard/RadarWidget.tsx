@@ -43,16 +43,23 @@ export default function RadarWidget() {
             console.log("Raw Response from Supabase (skills):", skills);
 
             // C. Merge & Map Data
-            // We map directly from the fetched skills data
+            // 1. Calculate Dynamic Target (Infinite Growth)
+            // Goal: Target is always at least 100, or Max(Current) + 50
+            const currentScores = skills?.map((s: any) => Number(s.current_score || 0)) || [0];
+            const maxCurrentScore = Math.max(0, ...currentScores);
+            const dynamicTarget = Math.max(100, maxCurrentScore + 50);
+
+            console.log("Stats: MaxScore=", maxCurrentScore, "DynamicTarget=", dynamicTarget);
+
             const merged = FOCUS_CATEGORIES.map(cat => {
                 const s = skills?.find((x: any) => x.category === cat.value);
 
                 return {
-                    subject: `${cat.label} (${s?.current_score || 0}m)`, // Label with Minutes "NLP (120m)"
+                    subject: `${cat.label} (${s?.current_score || 0}m)`,
                     level: Number(s?.current_score || 0),
                     A: Number(s?.current_score || 0), // Current Minutes -> Teal
-                    B: Number(s?.target_score || 100), // Target -> Red
-                    fullMark: 100 // Legacy prop, unused with 'auto' domain
+                    B: dynamicTarget, // Dynamic Target -> Red Line (Always expand)
+                    fullMark: 100
                 };
             });
 
