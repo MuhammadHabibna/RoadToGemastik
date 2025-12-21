@@ -125,7 +125,7 @@ export default function RadarWidget() {
     }, [isMounted]);
 
     // Render Logic
-    if (!isMounted) return <div className="h-[300px] bg-transparent" />;
+    if (!isMounted) return null;
 
     if (loading) {
         return (
