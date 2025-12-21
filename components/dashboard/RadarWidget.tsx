@@ -38,13 +38,13 @@ export default function RadarWidget() {
             if (targetError) console.error("Error fetching targets:", targetError);
 
             // B. Fetch Progress (Skill Summary)
-            // Action: Ensure the Supabase call is: .from('skill_summary').select('*').order('subject', { ascending: true })
-            // Action: Add a timestamp or disable caching. Using setHeaders for cache control as a robust measure.
-            const { data: progress, error: progressError } = await (supabase
+            // Action: REMOVE .setHeaders
+            // Action: Add AbortSignal for cache busting/timeout
+            const { data: progress, error: progressError } = await supabase
                 .from('skill_summary')
                 .select('*')
-                .order('subject', { ascending: true }) as any)
-                .setHeaders({ 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+                .order('subject', { ascending: true })
+                .abortSignal(AbortSignal.timeout(5000));
 
             if (progressError) console.error("Error fetching progress:", progressError);
 
@@ -65,6 +65,9 @@ export default function RadarWidget() {
                 };
             });
 
+            // Action: Ensure Visibility via console.table
+            console.table(merged);
+
             // Calculate Max Score for Domain (Infinite Growth)
             const maxVal = Math.max(
                 100,
@@ -76,7 +79,7 @@ export default function RadarWidget() {
             const finalData = merged.map(m => ({
                 ...m,
                 fullMark: maxVal,
-                placeholder: 0 // Explicitly 0, no ghost radar
+                placeholder: 0
             }));
 
             console.log("FINAL DATA FOR CHART:", finalData);
@@ -132,8 +135,7 @@ export default function RadarWidget() {
     }
 
     const maxScore = chartData.length > 0 ? chartData[0].fullMark : 100;
-
-    // Action: If data is empty or all zeroes, DO NOT return null. Render the <RadarChart> anyway.
+    const isAllZero = chartData.every(d => d.A === 0);
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">
@@ -144,49 +146,57 @@ export default function RadarWidget() {
             </CardHeader>
 
             {/* 3. Explicit Height for Recharts Robustness */}
-            <CardContent className="flex-1 min-h-[300px] p-4">
-                <ResponsiveContainer key={renderKey} width="100%" height={300}>
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-                        <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
-                        <PolarAngleAxis
-                            dataKey="subject"
-                            tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10, fontWeight: 'bold' }}
-                        />
-                        <PolarRadiusAxis
-                            angle={30}
-                            tick={false}
-                            axisLine={false}
-                            domain={[0, maxScore]}
-                        />
+            <CardContent className="flex-1 min-h-[300px] p-4 flex items-center justify-center">
+                {isAllZero ? (
+                    // Action: Fallback UI for Zero Data
+                    <div className="flex flex-col items-center justify-center space-y-2 text-[#1E93AB] animate-pulse">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span className="text-xs font-mono uppercase tracking-widest">Calibrating AI Stats...</span>
+                    </div>
+                ) : (
+                    <ResponsiveContainer key={renderKey} width="100%" height={300}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+                            <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
+                            <PolarAngleAxis
+                                dataKey="subject"
+                                tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10, fontWeight: 'bold' }}
+                            />
+                            <PolarRadiusAxis
+                                angle={30}
+                                tick={false}
+                                axisLine={false}
+                                domain={[0, maxScore]}
+                            />
 
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                borderRadius: '8px',
-                                border: 'none',
-                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                            labelStyle={{ fontWeight: 'bold', color: '#333' }}
-                        />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                                }}
+                                labelStyle={{ fontWeight: 'bold', color: '#333' }}
+                            />
 
-                        {/* 4. Correct Data Mapping */}
-                        <Radar
-                            name="Current Skill"
-                            dataKey="A" // Teal Area
-                            stroke="#1E93AB"
-                            fill="#1E93AB"
-                            fillOpacity={0.5}
-                        />
-                        <Radar
-                            name="Target Skill"
-                            dataKey="B" // Red Line
-                            stroke="#E62727"
-                            strokeDasharray="4 4"
-                            fill="transparent"
-                        />
-                        <Legend wrapperStyle={{ fontSize: '11px', marginTop: '5px' }} />
-                    </RadarChart>
-                </ResponsiveContainer>
+                            {/* 4. Correct Data Mapping */}
+                            <Radar
+                                name="Current Skill"
+                                dataKey="A" // Teal Area
+                                stroke="#1E93AB"
+                                fill="#1E93AB"
+                                fillOpacity={0.5}
+                            />
+                            <Radar
+                                name="Target Skill"
+                                dataKey="B" // Red Line
+                                stroke="#E62727"
+                                strokeDasharray="4 4"
+                                fill="transparent"
+                            />
+                            <Legend wrapperStyle={{ fontSize: '11px', marginTop: '5px' }} />
+                        </RadarChart>
+                    </ResponsiveContainer>
+                )}
             </CardContent>
         </Card>
     );
