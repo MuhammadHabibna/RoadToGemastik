@@ -17,6 +17,7 @@ import { ClientTime } from "./ClientTime";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { useToastStore } from "@/lib/toast-store";
+import { useRouter } from "next/navigation";
 
 // ... existing imports
 
@@ -24,6 +25,7 @@ export default function DailyGrind() {
     const { logs, setLogs, removeLog } = useStore();
     const { addToast } = useToastStore();
     const [loading, setLoading] = useState(true);
+    const router = useRouter(); // Initialize router
 
     // React.useEffect to fetch logs on mount
     React.useEffect(() => {
@@ -61,6 +63,12 @@ export default function DailyGrind() {
         if (!error) {
             removeLog(id);
             addToast("Log deleted successfully", 'info');
+
+            // Force Update Radar Chart
+            router.refresh();
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('refresh-radar'));
+            }
         } else {
             addToast("Failed to delete log", 'error');
         }
