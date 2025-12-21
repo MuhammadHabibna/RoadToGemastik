@@ -84,7 +84,8 @@ export default function RadarWidget() {
 
             console.log("FINAL DATA FOR CHART:", finalData);
 
-            setChartData(finalData);
+            // Action: Spreak operator to force re-render
+            setChartData([...finalData]);
             setRenderKey(prev => prev + 1); // Force re-render
         } catch (error) {
             console.error("Fetch Stats Error:", error);
@@ -135,7 +136,8 @@ export default function RadarWidget() {
     }
 
     const maxScore = chartData.length > 0 ? chartData[0].fullMark : 100;
-    const isAllZero = chartData.every(d => d.A === 0);
+
+    // Action: REMOVE "Calibrating" Guard. Always render checks.
 
     return (
         <Card className="h-full flex flex-col bg-card/50 backdrop-blur-sm border-primary/20 relative overflow-hidden group">
@@ -147,56 +149,48 @@ export default function RadarWidget() {
 
             {/* 3. Explicit Height for Recharts Robustness */}
             <CardContent className="flex-1 min-h-[300px] p-4 flex items-center justify-center">
-                {isAllZero ? (
-                    // Action: Fallback UI for Zero Data
-                    <div className="flex flex-col items-center justify-center space-y-2 text-[#1E93AB] animate-pulse">
-                        <Loader2 className="w-8 h-8 animate-spin" />
-                        <span className="text-xs font-mono uppercase tracking-widest">Calibrating AI Stats...</span>
-                    </div>
-                ) : (
-                    <ResponsiveContainer key={renderKey} width="100%" height={300}>
-                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
-                            <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
-                            <PolarAngleAxis
-                                dataKey="subject"
-                                tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10, fontWeight: 'bold' }}
-                            />
-                            <PolarRadiusAxis
-                                angle={30}
-                                tick={false}
-                                axisLine={false}
-                                domain={[0, maxScore]}
-                            />
+                <ResponsiveContainer key={renderKey} width="100%" height={300}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+                        <PolarGrid stroke="hsla(var(--secondary), 0.2)" />
+                        <PolarAngleAxis
+                            dataKey="subject"
+                            tick={{ fill: 'hsla(var(--muted-foreground))', fontSize: 10, fontWeight: 'bold' }}
+                        />
+                        <PolarRadiusAxis
+                            angle={30}
+                            tick={false}
+                            axisLine={false}
+                            domain={[0, maxScore]}
+                        />
 
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                }}
-                                labelStyle={{ fontWeight: 'bold', color: '#333' }}
-                            />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                            }}
+                            labelStyle={{ fontWeight: 'bold', color: '#333' }}
+                        />
 
-                            {/* 4. Correct Data Mapping */}
-                            <Radar
-                                name="Current Skill"
-                                dataKey="A" // Teal Area
-                                stroke="#1E93AB"
-                                fill="#1E93AB"
-                                fillOpacity={0.5}
-                            />
-                            <Radar
-                                name="Target Skill"
-                                dataKey="B" // Red Line
-                                stroke="#E62727"
-                                strokeDasharray="4 4"
-                                fill="transparent"
-                            />
-                            <Legend wrapperStyle={{ fontSize: '11px', marginTop: '5px' }} />
-                        </RadarChart>
-                    </ResponsiveContainer>
-                )}
+                        {/* 4. Correct Data Mapping */}
+                        <Radar
+                            name="Current Skill"
+                            dataKey="A" // Teal Area
+                            stroke="#1E93AB"
+                            fill="#1E93AB"
+                            fillOpacity={0.5}
+                        />
+                        <Radar
+                            name="Target Skill"
+                            dataKey="B" // Red Line
+                            stroke="#E62727"
+                            strokeDasharray="4 4"
+                            fill="transparent"
+                        />
+                        <Legend wrapperStyle={{ fontSize: '11px', marginTop: '5px' }} />
+                    </RadarChart>
+                </ResponsiveContainer>
             </CardContent>
         </Card>
     );
