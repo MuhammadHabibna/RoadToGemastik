@@ -10,14 +10,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { FOCUS_CATEGORIES } from "@/lib/constants";
 
 export default function RadarWidget() {
-    const [isMounted, setIsMounted] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState<any[]>([]);
 
     const [renderKey, setRenderKey] = useState(0);
 
     // 1. Client-Side Only Guard
-    useEffect(() => setIsMounted(true), []);
+    useEffect(() => setMounted(true), []);
 
     // 2. Fetch Data (Network Visible)
     const fetchStats = async () => {
@@ -30,37 +30,28 @@ export default function RadarWidget() {
                 return;
             }
 
-            // A. Fetch Targets
-            const { data: targets, error: targetError } = await supabase
+            // Action: Switch Source to 'skills' Table
+            const { data: skills, error: skillsError } = await supabase
                 .from('skills')
-                .select('category, target_score');
-
-            if (targetError) console.error("Error fetching targets:", targetError);
-
-            // B. Fetch Progress (Skill Summary)
-            // Action: REMOVE .setHeaders
-            // Action: Add AbortSignal for cache busting/timeout
-            const { data: progress, error: progressError } = await supabase
-                .from('skill_summary')
                 .select('*')
-                .order('subject', { ascending: true })
+                .order('category', { ascending: true })
                 .abortSignal(AbortSignal.timeout(5000));
 
-            if (progressError) console.error("Error fetching progress:", progressError);
+            if (skillsError) console.error("Error fetching skills:", skillsError);
 
             // DEBUG: Raw Payload
-            console.log("Raw Response from Supabase (skill_summary):", progress);
+            console.log("Raw Response from Supabase (skills):", skills);
 
             // C. Merge & Map Data
+            // We map directly from the fetched skills data
             const merged = FOCUS_CATEGORIES.map(cat => {
-                const t = targets?.find((x: any) => x.category === cat.value);
-                const p = progress?.find((x: any) => x.focus_category === cat.value);
+                const s = skills?.find((x: any) => x.category === cat.value);
 
                 return {
-                    subject: `${cat.label} (Lv. ${p?.raw_power || 0})`, // Simple label string
-                    level: Number(p?.raw_power || 0),
-                    A: Number(p?.current_score || 0), // Score -> Teal
-                    B: 100, // Target -> Red
+                    subject: `${cat.label} (Lv. ${s?.current_score || 0})`, // Label with Level
+                    level: Number(s?.current_score || 0),
+                    A: Number(s?.current_score || 0), // Current Score -> Teal
+                    B: Number(s?.target_score || 100), // Target Score -> Red
                     fullMark: 100
                 };
             });
@@ -95,7 +86,7 @@ export default function RadarWidget() {
     };
 
     useEffect(() => {
-        if (isMounted) {
+        if (mounted) {
             fetchStats();
 
             // 5. Auto-Update Trigger (Realtime)
@@ -122,10 +113,10 @@ export default function RadarWidget() {
                 window.removeEventListener('refresh-radar', handleRefresh);
             };
         }
-    }, [isMounted]);
+    }, [mounted]);
 
     // Render Logic
-    if (!isMounted) return null;
+    if (!mounted) return <div className="h-[300px]" />;
 
     if (loading) {
         return (
